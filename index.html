@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#01666b">
+<title>Venta diaria NOVA</title>
+<style>
+  :root{--bg:#f4f6f8;--card:#fff;--ink:#1f2933;--muted:#6b7785;--line:#e3e8ee;--accent:#01666b;--accent-2:#e6f2f2;--warn:#b42318;--err-bg:#fde8e7}
+  @media (prefers-color-scheme:dark){:root{--bg:#111518;--card:#1b2126;--ink:#e8edf1;--muted:#97a3ae;--line:#2b333a;--accent:#4fb3b8;--accent-2:#1f3133;--warn:#f97066;--err-bg:#3a1d1b}}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+  header{position:sticky;top:0;z-index:5;background:var(--accent);color:#fff;padding:14px 16px 12px}
+  header h1{margin:0;font-size:19px}
+  header .sub{font-size:12px;opacity:.85;margin-top:2px}
+  .bar{display:flex;gap:8px;align-items:center;margin-top:10px}
+  .seg{display:flex;background:rgba(255,255,255,.18);border-radius:10px;padding:3px;flex:1}
+  .seg button{flex:1;border:0;background:transparent;color:#fff;font-weight:600;padding:8px 0;border-radius:8px;font-size:14px}
+  .seg button.on{background:#fff;color:var(--accent)}
+  .btn{border:0;background:#fff;color:var(--accent);font-weight:700;border-radius:10px;padding:9px 12px;font-size:14px}
+  .btn:disabled{opacity:.6}
+  main{padding:12px 16px 32px;max-width:720px;margin:0 auto}
+  .total{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;border:1px solid var(--line)}
+  .total .lbl{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  .total .big{font-size:28px;font-weight:800;margin:2px 0 6px;font-variant-numeric:tabular-nums}
+  .kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .kpi{background:var(--accent-2);border-radius:10px;padding:8px 10px}
+  .kpi b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
+  .kpi span{font-size:12px;color:var(--muted)}
+  h2{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:18px 2px 8px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
+  .card .t{font-weight:700;margin-bottom:6px}
+  .row3{display:grid;grid-template-columns:.8fr 1.3fr 1.1fr;gap:6px;font-variant-numeric:tabular-nums}
+  .row3 div small{display:block;color:var(--muted);font-size:11px}
+  .row3 div{font-weight:600}
+  .zero{opacity:.55}
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-variant-numeric:tabular-nums}
+  th,td{padding:9px 8px;text-align:right;border-bottom:1px solid var(--line);font-size:13px}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase}
+  tr:last-child td{border-bottom:0}
+  tfoot td{font-weight:800}
+  .meta{color:var(--muted);font-size:12px;margin-top:14px;text-align:center}
+  .err{background:var(--err-bg);color:var(--warn);border-radius:10px;padding:12px;margin-bottom:12px}
+  .pin{max-width:320px;margin:60px auto;text-align:center}
+  .pin input{font-size:22px;text-align:center;letter-spacing:.3em;padding:10px;width:100%;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink)}
+  .pin .btn{background:var(--accent);color:#fff;width:100%;margin-top:10px;padding:12px}
+  .hide{display:none}
+  .loading{opacity:.5;transition:opacity .2s}
+</style>
+</head>
+<body>
+<header>
+  <h1>Venta diaria — Grupo NOVA</h1>
+  <div class="sub" id="sub">Montos en Bs con IVA</div>
+  <div class="bar" id="bar">
+    <div class="seg"><button id="bHoy" class="on" onclick="setVista('hoy')">Hoy</button><button id="bMes" onclick="setVista('mes')">Mes</button></div>
+    <button class="btn" id="bAct" onclick="cargar(true)">↻ Actualizar</button>
+  </div>
+</header>
+
+<form id="pinBox" class="pin hide" onsubmit="guardarPin();return false">
+  <p id="pinMsg">Ingresa el PIN para ver las ventas</p>
+  <input id="pin" type="password" inputmode="numeric" autocomplete="off">
+  <button class="btn" type="submit">Entrar</button>
+</form>
+
+<main id="app">
+  <div id="err" class="err hide"></div>
+  <div class="total">
+    <div class="lbl" id="totLbl">Total hoy</div>
+    <div class="big" id="totVenta">—</div>
+    <div class="kpis">
+      <div class="kpi"><b id="totCli">—</b><span>Clientes (transacciones)</span></div>
+      <div class="kpi"><b id="totTic">—</b><span>Ticket promedio (Bs)</span></div>
+    </div>
+  </div>
+  <h2>Por tienda</h2>
+  <div id="tiendas"></div>
+  <h2>Por caja</h2>
+  <div id="cajas"></div>
+  <div id="diasBox" class="hide">
+    <h2>Por día del mes</h2>
+    <div id="dias"></div>
+  </div>
+  <div class="meta" id="meta"></div>
+</main>
+
+<script>
+  var API_URL = 'https://script.google.com/macros/s/AKfycbwWFqQwKDOmy-Lcqz89qnmaM0ySg4ZQsCUFkobE24hBYh1NjlwMCdPRbQpTp6nmnieebA/exec';
+  var datos = null, vista = 'hoy', pin = '', timer = null;
+  var nf2 = new Intl.NumberFormat('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+  var nf0 = new Intl.NumberFormat('es-VE', {maximumFractionDigits: 0});
+  function bs(n){ return nf2.format(n || 0); }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function fechaCorta(iso){ var p = iso.split('-'); return p[2] + '/' + p[1]; }
+
+  function setVista(v){
+    vista = v;
+    document.getElementById('bHoy').className = v === 'hoy' ? 'on' : '';
+    document.getElementById('bMes').className = v === 'mes' ? 'on' : '';
+    pintar();
+  }
+
+  function cargar(force){
+    var b = document.getElementById('bAct');
+    b.disabled = true; b.textContent = 'Actualizando…';
+    document.getElementById('app').classList.add('loading');
+    fetch(API_URL, {
+      method: 'POST',
+      credentials: 'omit',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify({pin: pin, force: !!force})
+    })
+      .then(function(resp){ if (!resp.ok) throw new Error('HTTP ' + resp.status); return resp.json(); })
+      .then(function(r){ fin(); recibir(r); })
+      .catch(function(e){ fin(); mostrarError('No se pudo conectar: ' + (e && e.message ? e.message : e)); });
+  }
+  function fin(){
+    var b = document.getElementById('bAct');
+    b.disabled = false; b.textContent = '↻ Actualizar';
+    document.getElementById('app').classList.remove('loading');
+  }
+
+  function recibir(r){
+    if (r && r.error === 'PIN') {
+      pin = ''; try { sessionStorage.removeItem('nova_pin'); } catch (e) {}
+      document.getElementById('pinMsg').textContent = r.mensaje;
+      document.getElementById('pin').value = '';
+      document.getElementById('pinBox').classList.remove('hide');
+      document.getElementById('app').classList.add('hide');
+      document.getElementById('bar').classList.add('hide');
+      return;
+    }
+    document.getElementById('bar').classList.remove('hide');
+    if (r && r.error) { mostrarError(r.mensaje); return; }
+    document.getElementById('err').classList.add('hide');
+    datos = r; pintar();
+  }
+  function mostrarError(m){
+    var e = document.getElementById('err'); e.textContent = m; e.classList.remove('hide');
+  }
+  function guardarPin(){
+    pin = document.getElementById('pin').value;
+    try { sessionStorage.setItem('nova_pin', pin); } catch (e) {}
+    document.getElementById('pinBox').classList.add('hide');
+    document.getElementById('app').classList.remove('hide');
+    cargar(false);
+  }
+
+  function pintar(){
+    if (!datos) return;
+    var b = datos[vista];
+    document.getElementById('totLbl').textContent = vista === 'hoy' ? 'Total hoy' : 'Total del mes';
+    document.getElementById('totVenta').textContent = 'Bs ' + bs(b.total.venta);
+    document.getElementById('totCli').textContent = nf0.format(b.total.clientes);
+    document.getElementById('totTic').textContent = bs(b.total.ticket);
+
+    document.getElementById('tiendas').innerHTML = b.tiendas.map(function(t){
+      return '<div class="card' + (t.clientes ? '' : ' zero') + '"><div class="t">' + esc(t.tienda) + '</div>' +
+        '<div class="row3"><div><small>Clientes</small>' + nf0.format(t.clientes) + '</div>' +
+        '<div><small>Venta con IVA (Bs)</small>' + bs(t.venta) + '</div>' +
+        '<div><small>Ticket prom. (Bs)</small>' + bs(t.ticket) + '</div></div></div>';
+    }).join('');
+
+    document.getElementById('cajas').innerHTML = b.cajas.length ?
+      '<table><thead><tr><th>Caja</th><th>Clientes</th><th>Venta Bs</th><th>Ticket</th></tr></thead><tbody>' +
+      b.cajas.map(function(c){ return '<tr><td>' + esc(c.caja) + '</td><td>' + nf0.format(c.clientes) + '</td><td>' + bs(c.venta) + '</td><td>' + bs(c.ticket) + '</td></tr>'; }).join('') +
+      '</tbody></table>' : '<div class="card zero">Sin ventas en el período.</div>';
+
+    var db = document.getElementById('diasBox');
+    if (vista === 'mes' && datos.porDia.length) {
+      db.classList.remove('hide');
+      document.getElementById('dias').innerHTML =
+        '<table><thead><tr><th>Día</th><th>Clientes</th><th>Venta Bs</th><th>Ticket</th></tr></thead><tbody>' +
+        datos.porDia.slice().reverse().map(function(d){ return '<tr><td>' + fechaCorta(d.dia) + '</td><td>' + nf0.format(d.clientes) + '</td><td>' + bs(d.venta) + '</td><td>' + bs(d.ticket) + '</td></tr>'; }).join('') +
+        '</tbody><tfoot><tr><td>Total</td><td>' + nf0.format(datos.mes.total.clientes) + '</td><td>' + bs(datos.mes.total.venta) + '</td><td>' + bs(datos.mes.total.ticket) + '</td></tr></tfoot></table>';
+    } else { db.classList.add('hide'); }
+
+    var usd = datos.tasa && datos.tasa.bsPorUsd ? ' · ≈ USD ' + nf2.format(b.total.venta / datos.tasa.bsPorUsd) + ' (BCV ' + nf2.format(datos.tasa.bsPorUsd) + ')' : '';
+    document.getElementById('sub').textContent = 'Montos en Bs con IVA' + usd;
+    document.getElementById('meta').textContent = 'Actualizado: ' + datos.actualizado + ' · Clientes = transacciones de venta · Ticket promedio = Venta ÷ Clientes';
+  }
+
+  try { pin = sessionStorage.getItem('nova_pin') || ''; } catch (e) {}
+  cargar(false);
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden && datos) cargar(false); });
+  timer = setInterval(function(){ if (!document.hidden) cargar(false); }, 5 * 60 * 1000);
+</script>
+</body>
+</html>
